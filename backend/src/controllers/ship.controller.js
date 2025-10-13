@@ -71,7 +71,7 @@ export const updateShip = async (req, res) => {
 // ✅ Get all ships with filters & pagination
 export const getShips = async (req, res) => {
   try {
-    const { type, status, page = 1, limit = 10 } = req.query;
+    const { type, status, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const ships = await prisma.ship.findMany({

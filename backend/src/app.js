@@ -11,7 +11,7 @@ import shipmentRoutes from "./routes/shipment.routes.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:8080" }));
 app.use(express.json());
 
 // Health Check Route
