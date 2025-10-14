@@ -11,7 +11,26 @@ import shipmentRoutes from "./routes/shipment.routes.js";
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:8080" }));
+
+// ✅ Allow both local and production frontend origins
+const allowedOrigins = [
+  "http://localhost:8080", // local dev
+  "https://global-cargo-frontend.onrender.com", // deployed frontend
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 // Health Check Route
