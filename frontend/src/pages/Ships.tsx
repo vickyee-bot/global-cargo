@@ -8,8 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Ship as ShipIcon, Plus, Search, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import ShipForm from "@/components/forms/ShipForm";
 import { useShips, decommissionShip } from "@/lib/api";
 
@@ -24,41 +22,18 @@ interface Ship {
 }
 
 export default function Ships() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string | undefined>();
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
-
-  // ✅ Use React Query hook directly
-  const {
-    data: ships = [],
-    isLoading,
-    error,
-    refetch,
-  } = useShips({
-    type: typeFilter || "",
-    status: statusFilter || "",
-  });
-
-  // ✅ Client-side search
-  const visibleShips = ships.filter((s) => {
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.trim().toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      s.registrationNo?.toLowerCase().includes(q)
-    );
-  });
+  const { data: ships = [], isLoading, error, refetch } = useShips({});
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-success text-success-foreground";
+        return "bg-green-100 text-green-800";
       case "under_maintenance":
-        return "bg-warning text-warning-foreground";
+        return "bg-yellow-100 text-yellow-800";
       case "decommissioned":
-        return "bg-muted text-muted-foreground";
+        return "bg-gray-100 text-gray-600";
       default:
-        return "bg-muted text-muted-foreground";
+        return "bg-gray-100 text-gray-600";
     }
   };
 
@@ -68,7 +43,7 @@ export default function Ships() {
     if (!window.confirm(`Decommission ${name}?`)) return;
     try {
       await decommissionShip(id);
-      await refetch(); // ✅ trigger React Query refetch instead of loadShips()
+      await refetch();
     } catch {
       alert("Failed to decommission ship.");
     }
@@ -83,7 +58,9 @@ export default function Ships() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center space-x-2">
-            <ShipIcon className="w-6 h-6 text-primary" />
+            <span role="img" aria-label="ship">
+              🚢
+            </span>
             <span>Fleet Management</span>
           </h1>
           <p className="text-muted-foreground">
@@ -92,64 +69,33 @@ export default function Ships() {
         </div>
         <ShipForm
           mode="add"
-          onShipSaved={refetch} // ✅ trigger refetch on new ship addition
+          onShipSaved={refetch}
           trigger={
-            <Button className="bg-gradient-ocean text-primary-foreground shadow-ocean">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="bg-blue-600 text-white">
+              <span role="img" aria-label="plus">
+                ➕
+              </span>{" "}
               Add New Ship
             </Button>
           }
         />
       </div>
 
-      {/* Search + Filter */}
-      <Card className="shadow-card">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search ships by name or registration..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="flex items-center space-x-2"
-              onClick={() => {
-                setTypeFilter(undefined);
-                setStatusFilter(undefined);
-                setSearchTerm("");
-              }}
-            >
-              <Filter className="w-4 h-4" />
-              <span>Clear Filters</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Ships Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {visibleShips.length === 0 ? (
+        {ships.length === 0 ? (
           <p className="col-span-full text-center text-muted-foreground">
             No ships found.
           </p>
         ) : (
-          visibleShips.map((ship) => (
+          ships.map((ship) => (
             <Card
               key={ship.id}
-              className="shadow-card hover:shadow-elevated transition-all duration-300 group"
+              className="hover:shadow-lg transition-all duration-300"
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                    {ship.name}
-                  </CardTitle>
+                  <CardTitle className="text-lg">{ship.name}</CardTitle>
                   <Badge className={getStatusBadge(ship.status)}>
                     {ship.status}
                   </Badge>
@@ -181,7 +127,7 @@ export default function Ships() {
                     onShipSaved={refetch}
                     trigger={
                       <Button size="sm" className="flex-1">
-                        Edit
+                        ✏️ Edit
                       </Button>
                     }
                   />
@@ -191,7 +137,7 @@ export default function Ships() {
                     className="flex-1"
                     onClick={() => handleDecommission(ship.id, ship.name)}
                   >
-                    Decommission
+                    🗑️ Decommission
                   </Button>
                 </div>
               </CardContent>

@@ -31,10 +31,23 @@ export const deactivateClient = async (id: number) => {
 // ---- Ships ----
 export const useShips = (params = {}) => {
   return useQuery({
-    queryKey: ['get-ships', params],
+    queryKey: ["get-ships", params],
     queryFn: async () => {
-      const res = await API.get('/ships', { params });
-      return res.data;
+      const res = await API.get("/ships", { params });
+      const ships = res.data?.data || res.data;
+
+      // Normalize backend snake_case to frontend camelCase
+      return Array.isArray(ships)
+        ? ships.map((ship) => ({
+            id: ship.id,
+            name: ship.name,
+            registrationNo: ship.registration_number,
+            capacityInTonnes: ship.capacity_in_tonnes,
+            type: ship.type,
+            status: ship.status,
+            isActive: ship.is_active ?? ship.isActive,
+          }))
+        : [];
     },
   });
 };
