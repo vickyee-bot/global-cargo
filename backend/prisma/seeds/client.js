@@ -8,8 +8,8 @@ export async function seedClients(count = 10) {
   const clients = Array.from({ length: count }).map(() => ({
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
-    email: faker.internet.email(),
-    phone: faker.phone.number({ style: "international" }),
+    emailAddress: faker.internet.email(),
+    phoneNumber: faker.phone.number({ style: "international" }),
     address: faker.location.streetAddress(),
   }));
 

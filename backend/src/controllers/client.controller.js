@@ -3,7 +3,7 @@ import prisma from "../prisma.js";
 // ✅ Create Client
 export const createClient = async (req, res) => {
   try {
-    const { first_name, last_name, email, phone, address } = req.body;
+    const { first_name, last_name, email_address, phone_number, address } = req.body;
 
     if (!first_name || !last_name) {
       return res
@@ -12,9 +12,9 @@ export const createClient = async (req, res) => {
     }
 
     // If email provided, check uniqueness
-    if (email) {
+    if (email_address) {
       const existingEmail = await prisma.client.findUnique({
-        where: { email },
+        where: { emailAddress: email_address },
       });
       if (existingEmail) {
         return res.status(400).json({ error: "Email already exists" });
@@ -25,8 +25,8 @@ export const createClient = async (req, res) => {
       data: {
         firstName: first_name,
         lastName: last_name,
-        email: email || null,
-        phone: phone || null,
+        emailAddress: email_address || null,
+        phoneNumber: phone_number || null,
         address: address || null,
       },
     });
@@ -41,12 +41,12 @@ export const createClient = async (req, res) => {
 export const updateClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { first_name, last_name, email, phone, address } = req.body;
+    const { first_name, last_name, email_address, phone_number, address } = req.body;
 
-    if (email) {
+    if (email_address) {
       // Check email uniqueness if changed
       const existingEmail = await prisma.client.findUnique({
-        where: { email },
+        where: { emailAddress: email_address },
       });
       if (existingEmail && existingEmail.id !== parseInt(id)) {
         return res.status(400).json({ error: "Email already in use" });
@@ -58,9 +58,9 @@ export const updateClient = async (req, res) => {
       data: {
         ...(first_name && { firstName: first_name }),
         ...(last_name && { lastName: last_name }),
-        ...(email && { email }),
-        ...(phone && { phone }),
-        ...(address && { address }),
+        ...(email_address !== undefined && { emailAddress: email_address }),
+        ...(phone_number !== undefined && { phoneNumber: phone_number }),
+        ...(address !== undefined && { address }),
       },
     });
 
@@ -103,7 +103,22 @@ export const getClients = async (req, res) => {
       orderBy: { [sort]: order === "desc" ? "desc" : "asc" },
     });
 
-    const total = await prisma.client.count();
+    const total = await prisma.client.count({
+      where: {
+        isActive:
+          status === "inactive"
+            ? false
+            : status === "active"
+            ? true
+            : undefined,
+        OR: search
+          ? [
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+            ]
+          : undefined,
+      },
+    });
 
     res.json({
       data: clients,
@@ -118,7 +133,39 @@ export const getClients = async (req, res) => {
   }
 };
 
-// ✅ Deactivate Client
+// ✅ Get Single Client by ID
+export const getClientById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const client = await prisma.client.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        cargo: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            description: true,
+            weight: true,
+            volume: true,
+            cargoType: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    res.json({ data: client });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Deactivate Client (preserves historical data)
 export const deactivateClient = async (req, res) => {
   try {
     const { id } = req.params;
@@ -129,6 +176,50 @@ export const deactivateClient = async (req, res) => {
     });
 
     res.json({ message: "Client deactivated successfully", client });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Reactivate Client
+export const reactivateClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const client = await prisma.client.update({
+      where: { id: parseInt(id) },
+      data: { isActive: true },
+    });
+
+    res.json({ message: "Client reactivated successfully", client });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ✅ Get Client Statistics
+export const getClientStats = async (req, res) => {
+  try {
+    const totalClients = await prisma.client.count({ where: { isActive: true } });
+    const inactiveClients = await prisma.client.count({ where: { isActive: false } });
+    const clientsWithCargo = await prisma.client.count({
+      where: {
+        isActive: true,
+        cargo: {
+          some: { isActive: true }
+        }
+      }
+    });
+
+    res.json({
+      data: {
+        totalClients,
+        activeClients: totalClients,
+        inactiveClients,
+        clientsWithCargo,
+        utilizationRate: totalClients > 0 ? Math.round((clientsWithCargo / totalClients) * 100) : 0,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -7,126 +7,224 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Client {
+model User {
   id        Int      @id @default(autoincrement())
-  firstName String   @map("first_name")
-  lastName  String   @map("last_name")
-  email     String?  @unique @map("email_address")
-  phone     String?  @map("phone_number")
-  address   String?
+  username  String   @unique
+  email     String   @unique
+  password  String
+  fullName  String   @map("full_name")
   isActive  Boolean  @default(true) @map("is_active")
+  role      UserRole @default(USER)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  cargo     Cargo[]
+
+  @@map("users")
+}
+
+model Client {
+  id           Int      @id @default(autoincrement())
+  firstName    String   @map("first_name") @db.VarChar(150)
+  lastName     String   @map("last_name") @db.VarChar(150)
+  emailAddress String?  @unique @map("email_address") @db.VarChar(150)
+  phoneNumber  String?  @map("phone_number") @db.VarChar(50)
+  address      String?  @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  cargo        Cargo[]
+
+  @@map("clients")
 }
 
 model Ship {
-  id               Int        @id @default(autoincrement())
-  name             String
-  registrationNo   String     @unique @map("registration_number")
-  capacityInTonnes Float?     @map("capacity_in_tonnes")
-  type             ShipType   @default(cargo_ship)
-  status           ShipStatus @default(active)
-  isActive         Boolean    @default(true) @map("is_active")
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
-  crew             Crew[]
-  shipments        Shipment[]
+  id                 Int            @id @default(autoincrement())
+  name               String         @db.VarChar(255)
+  registrationNumber String         @unique @map("registration_number") @db.VarChar(200)
+  capacityInTonnes   Decimal?       @map("capacity_in_tonnes") @db.Decimal(10, 2)
+  type               ShipType       @default(cargo_ship)
+  status             ShipStatus     @default(active)
+  currentLatitude    Float?         @map("current_latitude")
+  currentLongitude   Float?         @map("current_longitude")
+  lastPositionUpdate DateTime?      @map("last_position_update")
+  isActive           Boolean        @default(true) @map("is_active")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamp(6)
+  crew               Crew[]
+  shipments          Shipment[]
+  journeys           Journey[]
+  positions          ShipPosition[]
+
+  @@map("ships")
 }
 
 model Crew {
   id          Int      @id @default(autoincrement())
-  shipId      Int?
-  firstName   String   @map("first_name")
-  lastName    String   @map("last_name")
+  shipId      Int?     @map("ship_id")
+  firstName   String   @map("first_name") @db.VarChar(150)
+  lastName    String   @map("last_name") @db.VarChar(150)
   role        CrewRole @default(Captain)
-  phoneNumber String   @unique @map("phone_number")
-  nationality String?
+  phoneNumber String   @map("phone_number") @db.VarChar(30)
+  nationality String?  @db.VarChar(100)
   isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  ship        Ship?    @relation(fields: [shipId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  ship        Ship?    @relation(fields: [shipId], references: [id], onDelete: SetNull)
+
+  @@map("crew")
 }
 
 model Port {
   id                   Int        @id @default(autoincrement())
-  name                 String
-  country              String
-  portType             String?    @map("port_type")
-  coordinates          String?
+  name                 String     @db.VarChar(255)
+  country              String     @db.VarChar(100)
+  portType             String?    @map("port_type") @db.VarChar(100)
+  coordinates          String?    @db.VarChar(50)
+  latitude             Float?
+  longitude            Float?
   depth                Float?
   dockingCapacity      Int?       @map("docking_capacity")
   maxVesselSize        Float?     @map("max_vessel_size")
-  securityLevel        String?    @map("security_level")
+  securityLevel        String?    @map("security_level") @db.VarChar(50)
   customsAuthorized    Boolean?   @map("customs_authorized")
-  operationalHours     String?    @map("operational_hours")
-  portManager          String?    @map("port_manager")
-  portContactInfo      String?    @map("port_contact_info")
+  operationalHours     String?    @map("operational_hours") @db.VarChar(50)
+  portManager          String?    @map("port_manager") @db.VarChar(255)
+  portContactInfo      String?    @map("port_contact_info") @db.VarChar(255)
   isActive             Boolean    @default(true) @map("is_active")
-  createdAt            DateTime   @default(now()) @map("created_at")
-  updatedAt            DateTime   @updatedAt @map("updated_at")
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamp(6)
   shipmentsDestination Shipment[] @relation("DestinationPort")
   shipmentsOrigin      Shipment[] @relation("OriginPort")
+  journeysOrigin       Journey[]  @relation("OriginPort")
+  journeysDestination  Journey[]  @relation("DestinationPort")
 
   @@unique([name, country])
+  @@map("ports")
 }
 
 model Cargo {
-  id          Int        @id @default(autoincrement())
-  description String?
-  weight      Float?
-  volume      Float?
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  cargoType   CargoType  @default(general) @map("cargo_type")
-  clientId    Int?       @map("client_id")
-  client      Client?    @relation(fields: [clientId], references: [id])
+  id          Int       @id @default(autoincrement())
+  description String?   @db.Text
+  weight      Decimal?  @db.Decimal(10, 2)
+  volume      Decimal?  @db.Decimal(10, 2)
+  clientId    Int?      @map("client_id")
+  cargoType   CargoType @default(general) @map("cargo_type")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
   shipments   Shipment[]
+
+  @@map("cargo")
 }
 
 model Shipment {
   id                Int            @id @default(autoincrement())
-  departureDate     DateTime?      @map("departure_date")
-  arrivalEstimate   DateTime?      @map("arrival_estimate")
-  actualArrivalDate DateTime?      @map("actual_arrival_date")
+  cargoId           Int?           @map("cargo_id")
+  shipId            Int?           @map("ship_id")
+  journeyId         Int?           @map("journey_id")
+  originPortId      Int?           @map("origin_port_id")
+  destinationPortId Int?           @map("destination_port_id")
+  departureDate     DateTime?      @map("departure_date") @db.Date
+  arrivalEstimate   DateTime?      @map("arrival_estimate") @db.Date
+  actualArrivalDate DateTime?      @map("actual_arrival_date") @db.Date
   status            ShipmentStatus @default(pending)
+  isActive          Boolean        @default(true) @map("is_active")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamp(6)
+  cargo             Cargo?         @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+  ship              Ship?          @relation(fields: [shipId], references: [id], onDelete: SetNull)
+  journey           Journey?       @relation(fields: [journeyId], references: [id], onDelete: SetNull)
+  originPort        Port?          @relation("OriginPort", fields: [originPortId], references: [id], onDelete: SetNull)
+  destinationPort   Port?          @relation("DestinationPort", fields: [destinationPortId], references: [id], onDelete: SetNull)
+
+  @@map("shipments")
+}
+
+// Journey - Tracks ship movement from port to port
+model Journey {
+  id                Int            @id @default(autoincrement())
+  shipId            Int            @map("ship_id")
+  originPortId      Int            @map("origin_port_id")
+  destinationPortId Int            @map("destination_port_id")
+  departureTime     DateTime?      @map("departure_time")
+  estimatedArrival  DateTime?      @map("estimated_arrival")
+  actualArrival     DateTime?      @map("actual_arrival")
+  status            JourneyStatus  @default(planned)
+  distance          Float?         // Distance in nautical miles
+  speed             Float?         // Current speed in knots
+  progress          Float          @default(0) // Progress percentage (0-100)
   isActive          Boolean        @default(true) @map("is_active")
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
-  cargoId           Int?           @map("cargo_id")
-  destinationPortId Int?           @map("destination_port_id")
-  originPortId      Int?           @map("origin_port_id")
-  shipId            Int?           @map("ship_id")
-  cargo             Cargo?         @relation(fields: [cargoId], references: [id])
-  destinationPort   Port?          @relation("DestinationPort", fields: [destinationPortId], references: [id])
-  originPort        Port?          @relation("OriginPort", fields: [originPortId], references: [id])
-  ship              Ship?          @relation(fields: [shipId], references: [id])
+  
+  ship              Ship           @relation(fields: [shipId], references: [id], onDelete: Cascade)
+  originPort        Port           @relation("OriginPort", fields: [originPortId], references: [id])
+  destinationPort   Port           @relation("DestinationPort", fields: [destinationPortId], references: [id])
+  shipments         Shipment[]
+  positions         ShipPosition[]
+  waypoints         Waypoint[]
+
+  @@map("journeys")
+}
+
+// ShipPosition - Real-time position tracking
+model ShipPosition {
+  id        Int      @id @default(autoincrement())
+  shipId    Int      @map("ship_id")
+  journeyId Int?     @map("journey_id")
+  latitude  Float
+  longitude Float
+  heading   Float?   // Direction in degrees (0-360)
+  speed     Float?   // Speed in knots
+  altitude  Float?   // For future use
+  timestamp DateTime @default(now())
+  
+  ship      Ship     @relation(fields: [shipId], references: [id], onDelete: Cascade)
+  journey   Journey? @relation(fields: [journeyId], references: [id], onDelete: SetNull)
+
+  @@index([shipId, timestamp])
+  @@map("ship_positions")
+}
+
+// Waypoints - Predefined points along a route
+model Waypoint {
+  id        Int     @id @default(autoincrement())
+  journeyId Int     @map("journey_id")
+  latitude  Float
+  longitude Float
+  name      String? @db.VarChar(100)
+  order     Int     // Order in the journey
+  reached   Boolean @default(false)
+  reachedAt DateTime? @map("reached_at")
+  
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@map("waypoints")
 }
 
 enum ShipType {
-  cargo_ship
-  passenger_ship
-  military_ship
+  cargo_ship     @map("cargo ship")
+  passenger_ship @map("passenger ship")
+  military_ship  @map("military ship")
   icebreaker
-  fishing_vessel
-  barge_ship
+  fishing_vessel @map("fishing vessel")
+  barge_ship     @map("barge ship")
 }
 
 enum ShipStatus {
   active
-  under_maintenance
+  under_maintenance @map("under maintenance")
   decommissioned
 }
 
 enum CrewRole {
   Captain
-  Chief_Officer
-  Able_Seaman
-  Ordinary_Seaman
-  Engine_Cadet
-  Radio_Officer
-  Chief_Cook
+  Chief_Officer   @map("Chief Officer")
+  Able_Seaman     @map("Able Seaman")
+  Ordinary_Seaman @map("Ordinary Seaman")
+  Engine_Cadet    @map("Engine Cadet")
+  Radio_Officer   @map("Radio Officer")
+  Chief_Cook      @map("Chief Cook")
   Steward
   Deckhand
 }
@@ -140,8 +238,21 @@ enum CargoType {
 
 enum ShipmentStatus {
   pending
-  in_transit
+  in_transit @map("in_transit")
   delivered
   delayed
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MANAGER
+}
+
+enum JourneyStatus {
+  planned
+  in_progress
+  completed
   cancelled
+  delayed
 }
