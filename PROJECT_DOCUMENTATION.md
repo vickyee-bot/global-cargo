@@ -1,7 +1,7 @@
 # Global Cargo Shipping Management System
 ## Internship Project No. 3
 **Date**: 15-JULY-2025  
-**Program**: ICTA Internship Program
+**Program**: global cargo
 
 ---
 
