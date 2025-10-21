@@ -10,6 +10,7 @@ import {
 const router = Router();
 
 // Public routes
+
 router.post("/register", register);
 router.post("/login", login);
 
