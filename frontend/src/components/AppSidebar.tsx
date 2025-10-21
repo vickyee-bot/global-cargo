@@ -6,7 +6,10 @@ import {
   Truck, 
   Building2, 
   BarChart3,
-  Settings
+  TrendingUp,
+  Settings,
+  Navigation,
+  Compass
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -25,12 +28,15 @@ import {
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
-  { title: "Ships", url: "/ships", icon: Ship },
+  { title: "Fleets", url: "/ships", icon: Ship },
+  { title: "Journeys", url: "/journeys", icon: Navigation },
+  { title: "Tracking", url: "/tracking", icon: MapPin },
   { title: "Crew", url: "/crew", icon: Users },
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Cargo", url: "/cargo", icon: Package },
   { title: "Shipments", url: "/shipments", icon: Truck },
-  { title: "Ports", url: "/ports", icon: MapPin },
+  { title: "Ports", url: "/ports", icon: Compass },
+  { title: "Analytics", url: "/analytics", icon: TrendingUp },
 ];
 
 const secondaryItems = [

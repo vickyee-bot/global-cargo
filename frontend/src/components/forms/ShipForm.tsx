@@ -1,182 +1,217 @@
-import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { createShip, updateShip } from "@/lib/api";
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 
-interface Ship {
-  id?: number;
-  name: string;
-  registrationNo?: string;
-  capacityInTonnes: number;
-  type?: string;
-  status?: string;
-}
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+import { Ship, ShipFormData, ShipType, ShipStatus } from '@/types';
+
+const shipFormSchema = z.object({
+  name: z.string().min(1, 'Ship name is required').max(255, 'Name too long'),
+  registration_number: z.string().min(1, 'Registration number is required').max(200, 'Registration number too long'),
+  capacity_in_tonnes: z.number().min(0.1, 'Capacity must be greater than 0'),
+  type: z.enum(['cargo_ship', 'passenger_ship', 'military_ship', 'icebreaker', 'fishing_vessel', 'barge_ship']).optional(),
+  status: z.enum(['active', 'under_maintenance', 'decommissioned']).optional(),
+});
 
 interface ShipFormProps {
-  mode?: "add" | "edit";
-  ship?: Ship;
-  onShipSaved: () => void;
-  trigger?: React.ReactNode;
+  ship?: Ship | null;
+  onSubmit: (data: ShipFormData) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+  mode: 'create' | 'edit' | 'view';
 }
 
-export default function ShipForm({
-  mode = "add",
-  ship,
-  onShipSaved,
-  trigger,
-}: ShipFormProps) {
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    registration_number: "",
-    capacity_in_tonnes: 0,
-    type: "cargo_ship",
-    status: "active",
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+const shipTypes: { value: ShipType; label: string }[] = [
+  { value: 'cargo_ship', label: 'Cargo Ship' },
+  { value: 'passenger_ship', label: 'Passenger Ship' },
+  { value: 'military_ship', label: 'Military Ship' },
+  { value: 'icebreaker', label: 'Icebreaker' },
+  { value: 'fishing_vessel', label: 'Fishing Vessel' },
+  { value: 'barge_ship', label: 'Barge Ship' },
+];
 
-  // Pre-fill data in edit mode
+const shipStatuses: { value: ShipStatus; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'under_maintenance', label: 'Under Maintenance' },
+  { value: 'decommissioned', label: 'Decommissioned' },
+];
+
+export function ShipForm({ ship, onSubmit, onCancel, isLoading = false, mode }: ShipFormProps) {
+  const form = useForm<ShipFormData>({
+    resolver: zodResolver(shipFormSchema),
+    defaultValues: {
+      name: '',
+      registration_number: '',
+      capacity_in_tonnes: 0,
+      type: 'cargo_ship',
+      status: 'active',
+    },
+  });
+
   useEffect(() => {
-    if (ship && mode === "edit") {
-      setFormData({
-        name: ship.name || "",
-        registration_number: ship.registrationNo || "",
+    if (ship && (mode === 'edit' || mode === 'view')) {
+      form.reset({
+        name: ship.name,
+        registration_number: ship.registrationNumber,
         capacity_in_tonnes: ship.capacityInTonnes || 0,
-        type: ship.type || "cargo_ship",
-        status: ship.status || "active",
+        type: ship.type,
+        status: ship.status,
       });
     }
-  }, [ship, mode]);
+  }, [ship, mode, form]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "capacity_in_tonnes"
-          ? Number(value) // Convert number input to a real number
-          : value,
-    }));
+  const handleSubmit = (data: ShipFormData) => {
+    onSubmit(data);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name || !formData.registration_number) {
-      setError("Name and registration number are required.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (mode === "add") {
-        await createShip(formData);
-      } else if (mode === "edit" && ship?.id) {
-        await updateShip(ship.id, formData);
-      }
-
-      setOpen(false);
-      onShipSaved();
-      setError("");
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.error || "Failed to save ship.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isViewMode = mode === 'view';
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button className="bg-gradient-ocean text-primary-foreground shadow-ocean hover:shadow-elevated">
-            {mode === "add" ? "Add New Ship" : "Edit Ship"}
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "add" ? "Add a New Ship" : "Edit Ship"}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
               name="name"
-              placeholder="Ship Name"
-              value={formData.name}
-              onChange={handleChange}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ship Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter ship name"
+                      {...field}
+                      disabled={isViewMode}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div>
-            <Label htmlFor="registration_number">Registration Number *</Label>
-            <Input
+
+            <FormField
+              control={form.control}
               name="registration_number"
-              placeholder="REG-12345"
-              value={formData.registration_number}
-              onChange={handleChange}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Registration Number *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter registration number"
+                      {...field}
+                      disabled={isViewMode}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </div>
-          <div>
-            <Label htmlFor="capacity_in_tonnes">Capacity (in tonnes)</Label>
-            <Input
-              type="number"
-              name="capacity_in_tonnes"
-              placeholder="10000"
-              value={formData.capacity_in_tonnes}
-              onChange={handleChange}
-            />
-          </div>
-          <div>
-            <Label htmlFor="type">Type</Label>
-            <select
+
+          <FormField
+            control={form.control}
+            name="capacity_in_tonnes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Capacity (Tonnes) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Enter capacity in tonnes"
+                    {...field}
+                    onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                    disabled={isViewMode}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
               name="type"
-              className="w-full border rounded p-2"
-              value={formData.type}
-              onChange={handleChange}
-            >
-              <option value="cargo_ship">Cargo Ship</option>
-              <option value="passenger_ship">Passenger Ship</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <select
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ship Type</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isViewMode}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select ship type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shipTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="status"
-              className="w-full border rounded p-2"
-              value={formData.status}
-              onChange={handleChange}
-            >
-              <option value="active">Active</option>
-              <option value="under_maintenance">Under Maintenance</option>
-              <option value="decommissioned">Decommissioned</option>
-            </select>
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isViewMode}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shipStatuses.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading
-              ? "Saving..."
-              : mode === "add"
-              ? "Add Ship"
-              : "Save Changes"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+
+        {!isViewMode && (
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Saving...' : mode === 'create' ? 'Create Ship' : 'Update Ship'}
+            </Button>
+          </div>
+        )}
+      </form>
+    </Form>
   );
 }
